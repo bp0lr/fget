@@ -1,12 +1,18 @@
 ### fget
-
 Multithread download for a list of files.
 
+# install
+```
+go get -u -v github.com/bp0lr/fget
+```
+
+# examples
 ```
 ┌─[root@DarkStar]─[/opt/bp0/lovan/fget]
 └──╼ #cat all_jslinks.txt | go run main.go -o /opt/bp0/lovan/fget/ouput/ -H "foo: bar" --proxy "http://192.168.0.150:8080"
 ```
 
+# usage
 ```
 ┌─[✗]─[root@DarkStar]─[/opt/bp0/lovan/fget]
 └──╼ #go run main.go -h
