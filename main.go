@@ -33,6 +33,7 @@ type Ln struct {
 
 var (
 	workersArg	      int
+	timeOutArg		  int
 	HeaderArg         []string
 	urlArg            string
 	statusListArg     string
@@ -44,7 +45,7 @@ var (
 	followRedirectArg bool
 	useRandomAgentArg bool
 	testHTTPArg       bool
-	allInArg		  bool
+	allInArg		  bool	
 )
 
 func newClient() *http.Client {
@@ -53,7 +54,7 @@ func newClient() *http.Client {
 		IdleConnTimeout: time.Second,
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		DialContext: (&net.Dialer{
-			Timeout: time.Second * 5,
+			Timeout: time.Second * time.Duration(timeOutArg),
 		}).DialContext,
 	}
 
@@ -65,7 +66,7 @@ func newClient() *http.Client {
 
 	client := &http.Client{
 		Transport: tr,
-		Timeout:   time.Second * 5,
+		Timeout:   time.Second * time.Duration(timeOutArg),
 	}
 
 	if !followRedirectArg {
@@ -89,7 +90,8 @@ func main() {
 	flag.StringVarP(&proxyArg, "proxy", "p", "", "Add a HTTP proxy")	
 	flag.BoolVarP(&useRandomAgentArg, "random-agent", "r", false, "Set a random User Agent")
 	flag.BoolVarP(&allInArg, "no-folders", "", false, "Don't store results on separate folders")
-
+	flag.IntVarP(&timeOutArg, "timeout", "t", 10, "connection timeout")
+	
 	flag.Parse()
 
 	if workersArg > 100 {
@@ -158,9 +160,11 @@ func worker(index int, queue <-chan Ln, wg *sync.WaitGroup, client *http.Client)
 		var fullPath string
 
 		if(!allInArg){
-			
+
 			if(outputFileArg != ""){
 				fullPath = path.Join(outputFileArg, "results")
+			}else{
+				fullPath = "results"
 			}
 			
 			//creating results folder
