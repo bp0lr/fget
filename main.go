@@ -26,8 +26,9 @@ const (
 )
 
 type Ln struct {
-	filename string
-	url      string
+	filename 	string
+	url      	string
+	host		string
 }
 
 var (
@@ -80,7 +81,7 @@ func main() {
 
 	flag.StringArrayVarP(&HeaderArg, "header", "H", nil, "Add custom Headers to the request")
 	flag.StringVarP(&urlArg, "url", "u", "", "The url to check")
-	flag.StringVarP(&outputFileArg, "output", "o", ".", "Target directory")
+	flag.StringVarP(&outputFileArg, "output", "o", "", "Save to folder. Default: create results folder which will include a folder for each target")
 	flag.IntVarP(&workersArg, "workers", "w", 20, "Number of workers")
 	flag.BoolVarP(&verboseArg, "verbose", "v", false, "Display extra info about what is going on")
 	flag.BoolVarP(&followRedirectArg, "follow-redirect", "f", false, "Follow redirects (Default: false)")
@@ -117,7 +118,7 @@ func main() {
 
 	for _, link := range links {
 		
-		_, err := url.ParseRequestURI(link)
+		u, err := url.ParseRequestURI(link)
 		if err != nil {
 			if(verboseArg){
 				fmt.Printf("[-] Invalid url: %s\n", link)
@@ -125,8 +126,8 @@ func main() {
 		}
 
 		_, fileName := path.Split(link)
-		
-		link0:=Ln{filename: fileName, url: link}
+
+		link0:=Ln{filename: fileName, url: link, host: u.Host}
 		
 		queue <- link0
 	}
@@ -136,6 +137,7 @@ func main() {
 }
 
 func worker(index int, queue <-chan Ln, wg *sync.WaitGroup, client *http.Client) {
+	
 	defer wg.Done()
 	for link := range queue {
 		if(verboseArg){
@@ -150,13 +152,36 @@ func worker(index int, queue <-chan Ln, wg *sync.WaitGroup, client *http.Client)
 			continue
 		}
 
-		fullPath:=path.Join(outputFileArg, link.filename)
+		var err_write error
+		var fullPath string
 
-		
-		err0 := ioutil.WriteFile(fullPath, bytes, 0644)
-		if err0 != nil {
+		//save to file
+		if(outputFileArg != ""){
+			fullPath=path.Join(outputFileArg, link.filename)
+			err_write = ioutil.WriteFile(fullPath, bytes, 0644)
+		}else{
+
+			//create if don't exists.
+			if _, err_results := os.Stat("results"); os.IsNotExist(err_results) {
+				os.Mkdir("results", 0644)
+			}else{
+
+			}
+
+			fullPath=path.Join("results", link.host)
+
+			//create folder for target
+			if _, err_folder := os.Stat(fullPath); os.IsNotExist(err_folder) {
+				os.Mkdir(fullPath, 0644)
+			}
+
+			fullPath=path.Join(fullPath, link.filename)
+			err_write = ioutil.WriteFile(fullPath, bytes, 0644)
+		}
+
+		if err_write != nil {
 			if(verboseArg){
-				fmt.Printf("[-] error: %v\n", err0)
+				fmt.Printf("[-] error: %v\n", err_write)
 			}
 		} else {
 			if(verboseArg){

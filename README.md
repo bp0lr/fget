@@ -19,7 +19,7 @@ go get -u -v github.com/bp0lr/fget
 Usage of /tmp/go-build547111181/b001/exe/main:
   -f, --follow-redirect      Follow redirects (Default: false)
   -H, --header stringArray   Add custom Headers to the request
-  -o, --output string        Target directory (default ".")
+  -o, --output string        Target directory (default "Save to folder. Default: create results folder which will include a folder for each target")
   -p, --proxy string         Add a HTTP proxy
   -r, --random-agent         Set a random User Agent
   -u, --url string           The url to check
