@@ -43,7 +43,8 @@ var (
 	verboseArg        bool
 	followRedirectArg bool
 	useRandomAgentArg bool
-	testHTTPArg       bool	
+	testHTTPArg       bool
+	allInArg		  bool
 )
 
 func newClient() *http.Client {
@@ -87,6 +88,7 @@ func main() {
 	flag.BoolVarP(&followRedirectArg, "follow-redirect", "f", false, "Follow redirects (Default: false)")
 	flag.StringVarP(&proxyArg, "proxy", "p", "", "Add a HTTP proxy")	
 	flag.BoolVarP(&useRandomAgentArg, "random-agent", "r", false, "Set a random User Agent")
+	flag.BoolVarP(&allInArg, "no-folders", "", false, "Don't store results on separate folders")
 
 	flag.Parse()
 
@@ -155,40 +157,47 @@ func worker(index int, queue <-chan Ln, wg *sync.WaitGroup, client *http.Client)
 		var err_write error
 		var fullPath string
 
-		//save to file
-		if(outputFileArg != ""){
-			fullPath=path.Join(outputFileArg, link.filename)
-			err_write = ioutil.WriteFile(fullPath, bytes, 0644)
-		}else{
-
-			//create if don't exists.
-			if _, err_results := os.Stat("results"); os.IsNotExist(err_results) {
-				os.Mkdir("results", 0644)
-			}else{
-
+		if(!allInArg){
+			
+			if(outputFileArg != ""){
+				fullPath = path.Join(outputFileArg, "results")
+			}
+			
+			//creating results folder
+			if _, err_results := os.Stat(fullPath); os.IsNotExist(err_results) {
+				os.MkdirAll(fullPath, 0755)
 			}
 
-			fullPath=path.Join("results", link.host)
+			fullPath=path.Join(fullPath, link.host)
 
-			//create folder for target
+			//creating a folder for each domain
 			if _, err_folder := os.Stat(fullPath); os.IsNotExist(err_folder) {
-				os.Mkdir(fullPath, 0644)
+				os.Mkdir(fullPath, 0755)
 			}
 
 			fullPath=path.Join(fullPath, link.filename)
-			err_write = ioutil.WriteFile(fullPath, bytes, 0644)
-		}
 
+		}else{
+			if(outputFileArg != ""){
+				fullPath = outputFileArg
+				os.Mkdir(fullPath, 0755)
+			}
+			
+			fullPath = path.Join(fullPath, link.filename)
+		}
+	
+		// lets write the file!
+		err_write = ioutil.WriteFile(fullPath, bytes, 0644)
+		
 		if err_write != nil {
 			if(verboseArg){
-				fmt.Printf("[-] error: %v\n", err_write)
+				fmt.Printf("[-] Write error: %v\n", err_write)
 			}
 		} else {
 			if(verboseArg){
-				fmt.Printf("[+] file: %v, size: %v\n", link.filename, len(bytes))
+				fmt.Printf("[+] file OK: %v, size: %v\n", link.filename, len(bytes))
 			}
-		}
-	
+		}	
 	}
 }
 
