@@ -22,10 +22,10 @@ import (
 )
 
 const (
-	QSIZE = 20
+	qsize = 20
 )
 
-type Ln struct {
+type ln struct {
 	filename 	string
 	url      	string
 	host		string
@@ -34,7 +34,7 @@ type Ln struct {
 var (
 	workersArg	      int
 	timeOutArg		  int
-	HeaderArg         []string
+	headerArg         []string
 	urlArg            string
 	statusListArg     string
 	proxyArg          string
@@ -81,7 +81,7 @@ func newClient() *http.Client {
 
 func main() {
 
-	flag.StringArrayVarP(&HeaderArg, "header", "H", nil, "Add custom Headers to the request")
+	flag.StringArrayVarP(&headerArg, "header", "H", nil, "Add custom Headers to the request")
 	flag.StringVarP(&urlArg, "url", "u", "", "The url to check")
 	flag.StringVarP(&outputFileArg, "output", "o", "", "Save to folder. Default: create results folder which will include a folder for each target")
 	flag.IntVarP(&workersArg, "workers", "w", 20, "Number of workers")
@@ -90,7 +90,7 @@ func main() {
 	flag.StringVarP(&proxyArg, "proxy", "p", "", "Add a HTTP proxy")	
 	flag.BoolVarP(&useRandomAgentArg, "random-agent", "r", false, "Set a random User Agent")
 	flag.BoolVarP(&allInArg, "no-folders", "", false, "Don't store results on separate folders")
-	flag.IntVarP(&timeOutArg, "timeout", "t", 10, "connection timeout")
+	flag.IntVarP(&timeOutArg, "timeout", "t", 20, "connection timeout")
 	
 	flag.Parse()
 
@@ -113,7 +113,7 @@ func main() {
 
 	var wg sync.WaitGroup
 	
-	queue := make(chan Ln, QSIZE)
+	queue := make(chan ln, qsize)
 
 	for i := 0; i < workersArg; i++ {
 		wg.Add(1)
@@ -129,9 +129,9 @@ func main() {
 			}
 		}
 
-		_, fileName := path.Split(link)
+		_, fileName := path.Split(u.Path)
 
-		link0:=Ln{filename: fileName, url: link, host: u.Host}
+		link0:=ln{filename: fileName, url: link, host: u.Host}
 		
 		queue <- link0
 	}
@@ -140,7 +140,7 @@ func main() {
 	wg.Wait()
 }
 
-func worker(index int, queue <-chan Ln, wg *sync.WaitGroup, client *http.Client) {
+func worker(index int, queue <-chan ln, wg *sync.WaitGroup, client *http.Client) {
 	
 	defer wg.Done()
 	for link := range queue {
@@ -156,11 +156,10 @@ func worker(index int, queue <-chan Ln, wg *sync.WaitGroup, client *http.Client)
 			continue
 		}
 
-		var err_write error
+		var errWrite error
 		var fullPath string
 
 		if(!allInArg){
-
 			if(outputFileArg != ""){
 				fullPath = path.Join(outputFileArg, "results")
 			}else{
@@ -168,14 +167,14 @@ func worker(index int, queue <-chan Ln, wg *sync.WaitGroup, client *http.Client)
 			}
 			
 			//creating results folder
-			if _, err_results := os.Stat(fullPath); os.IsNotExist(err_results) {
+			if _, errResults := os.Stat(fullPath); os.IsNotExist(errResults) {
 				os.MkdirAll(fullPath, 0755)
 			}
 
 			fullPath=path.Join(fullPath, link.host)
 
 			//creating a folder for each domain
-			if _, err_folder := os.Stat(fullPath); os.IsNotExist(err_folder) {
+			if _, errFolder := os.Stat(fullPath); os.IsNotExist(errFolder) {
 				os.Mkdir(fullPath, 0755)
 			}
 
@@ -191,11 +190,11 @@ func worker(index int, queue <-chan Ln, wg *sync.WaitGroup, client *http.Client)
 		}
 	
 		// lets write the file!
-		err_write = ioutil.WriteFile(fullPath, bytes, 0644)
+		errWrite = ioutil.WriteFile(fullPath, bytes, 0644)
 		
-		if err_write != nil {
+		if errWrite != nil {
 			if(verboseArg){
-				fmt.Printf("[-] Write error: %v\n", err_write)
+				fmt.Printf("[-] Write error: %v\n", errWrite)
 			}
 		} else {
 			if(verboseArg){
@@ -226,7 +225,7 @@ func fetch(url string, client *http.Client) ([]byte, error) {
 	}
 
 	// add headers to the request
-	for _, h := range HeaderArg {
+	for _, h := range headerArg {
 		parts := strings.SplitN(h, ":", 2)
 
 		if len(parts) != 2 {
@@ -238,10 +237,9 @@ func fetch(url string, client *http.Client) ([]byte, error) {
 	// send the request
 	resp, err := client.Do(req)
 	if err != nil {
-		if verboseArg {
+		if (verboseArg) {
 			fmt.Printf("[-] Error: %v\n", err)
 		}
-
 		return nil, errors.New("[-] Failed to parse " + url)
 	}
 	defer resp.Body.Close()
@@ -250,8 +248,9 @@ func fetch(url string, client *http.Client) ([]byte, error) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		if(verboseArg){
-			return nil, errors.New("[-] Failed to parse " + url)
+			fmt.Printf("[-] Error: %v\n", err)			
 		}
+		return nil, errors.New("[-] Failed to parse " + url)
 	}
 	return body, nil
 }
