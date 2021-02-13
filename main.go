@@ -2,21 +2,20 @@ package main
 
 // imports
 import (
+	"bufio"
+	"crypto/tls"
 	"errors"
 	"fmt"
-	"os"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
-	"sync"
-	"crypto/tls"
-	"bufio"
-	"time"
-	"math/rand"
+	"os"
 	"path"
 	"strings"
-	
+	"sync"
+	"time"
 
 	flag "github.com/spf13/pflag"
 )
@@ -45,7 +44,8 @@ var (
 	followRedirectArg bool
 	useRandomAgentArg bool
 	testHTTPArg       bool
-	allInArg		  bool	
+	allInArg		  bool
+	useUniqueName	  bool
 )
 
 func newClient() *http.Client {
@@ -90,6 +90,7 @@ func main() {
 	flag.StringVarP(&proxyArg, "proxy", "p", "", "Add a HTTP proxy")	
 	flag.BoolVarP(&useRandomAgentArg, "random-agent", "r", false, "Set a random User Agent")
 	flag.BoolVarP(&allInArg, "no-folders", "", false, "Don't store results on separate folders")
+	flag.BoolVarP(&useUniqueName, "unique", "", false, "Use a unique name for each file")
 	flag.IntVarP(&timeOutArg, "timeout", "t", 20, "connection timeout")
 	
 	flag.Parse()
@@ -158,6 +159,15 @@ func worker(index int, queue <-chan ln, wg *sync.WaitGroup, client *http.Client)
 
 		var errWrite error
 		var fullPath string
+		
+		if(useUniqueName){
+			//use unique name
+			host, _:=url.Parse(link.url)
+
+			cleanhost:= strings.Replace(host.Host, ".", "_", -1)
+
+			link.filename = cleanhost + "_" + link.filename
+		}
 
 		if(!allInArg){
 			if(outputFileArg != ""){
@@ -177,7 +187,7 @@ func worker(index int, queue <-chan ln, wg *sync.WaitGroup, client *http.Client)
 			if _, errFolder := os.Stat(fullPath); os.IsNotExist(errFolder) {
 				os.Mkdir(fullPath, 0755)
 			}
-
+			
 			fullPath=path.Join(fullPath, link.filename)
 
 		}else{
